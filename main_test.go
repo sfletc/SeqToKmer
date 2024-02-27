@@ -397,3 +397,83 @@ func TestWriteCountsToFile(t *testing.T) {
 		t.Errorf("Expected kmers %v, got %v", expected, readKmers)
 	}
 }
+
+func TestKmerToSequence(t *testing.T) {
+	// Define test cases
+	tests := []struct {
+		name     string
+		kmer     uint64
+		k        int
+		expected string
+	}{
+		{"Test 1", 0b00, 1, "A"},
+		{"Test 2", 0b01, 1, "C"},
+		{"Test 3", 0b10, 1, "G"},
+		{"Test 4", 0b11, 1, "T"},
+		{"Test 5", 0b010011, 3, "CAT"},
+		{"Test 6", 0b111111, 3, "TTT"},
+		{"Test 7", 0b000000, 3, "AAA"},
+		{"Test 8", 0b101010101010, 6, "GGGGGG"},
+		{"Edge Case - Full Sequence", 0xFFFFFFFFFFFFFFFF, 32, "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT"},
+	}
+
+	// Execute each test
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := kmerToSequence(tc.kmer, tc.k)
+			if result != tc.expected {
+				t.Errorf("For %s, expected %s, got %s", tc.name, tc.expected, result)
+			}
+		})
+	}
+}
+
+// TestReadKmersFromDisk tests the readKmersFromDisk function for correctness.
+func TestReadKmersFromDisk(t *testing.T) {
+	// Setup: Create a temporary binary file with known k-mer values.
+	tmpFile, err := os.CreateTemp("", "kmers")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name()) // Clean up after the test.
+
+	// Define known k-mers and their expected sequences.
+	kmerData := []struct {
+		kmer     uint64
+		expected string
+	}{
+
+		{0b010011, "CAT"},
+		{0b111111, "TTT"},
+		{0b000000, "AAA"},
+		{0b010101, "CCC"},
+	}
+
+	// Write the known k-mers to the temporary file.
+	for _, data := range kmerData {
+		if err := binary.Write(tmpFile, binary.LittleEndian, data.kmer); err != nil {
+			t.Fatalf("Failed to write k-mer to temp file: %v", err)
+		}
+	}
+
+	if err := tmpFile.Close(); err != nil {
+		t.Fatalf("Failed to close temp file: %v", err)
+	}
+
+	// Test: Call readKmersFromDisk with the temporary file and capture the output.
+	sequences, err := readKmersFromDisk(tmpFile.Name(), 3) // Adjust the '2' if k-mer length differs in your tests
+	if err != nil {
+		t.Fatalf("Failed to read k-mers from disk: %v", err)
+	}
+
+	// Validate: Ensure the output matches the expected sequences.
+	if len(sequences) != len(kmerData) {
+		t.Fatalf("Expected %d sequences, got %d", len(kmerData), len(sequences))
+	}
+
+	for i, data := range kmerData {
+		if sequences[i] != data.expected {
+			t.Errorf("Expected sequence %s, got %s for k-mer at index %d", data.expected, sequences[i], i)
+		}
+	}
+}

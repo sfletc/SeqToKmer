@@ -483,20 +483,23 @@ func kmerToSequence(kmer uint64, k int) string {
 // readKmersFromDisk reads k-mers encoded as unsigned 64-bit integers from a binary file
 // and converts each k-mer into its respective DNA sequence string. This function assumes
 // that the binary file contains a sequence of 64-bit integers where each integer
-// represents a k-mer.
+// represents a k-mer. It returns a slice of strings representing the sequences and an error, if any.
 //
 // Parameters:
 // - filename: The name of the binary file containing the k-mers.
 // - k: The length of the k-mers that are stored in the file.
-func readKmersFromDisk(filename string, k int) {
+//
+// Returns:
+// - A slice of strings representing the sequences of nucleotides for the k-mers.
+// - An error if any occurs during file operation or reading.
+func readKmersFromDisk(filename string, k int) ([]string, error) {
 	file, err := os.Open(filename)
-
 	if err != nil {
-		fmt.Printf("Error opening file: %v\n", err)
-		return
+		return nil, fmt.Errorf("error opening file: %v", err)
 	}
 	defer file.Close()
 
+	var sequences []string
 	for {
 		var kmer uint64
 		err := binary.Read(file, binary.LittleEndian, &kmer)
@@ -504,13 +507,14 @@ func readKmersFromDisk(filename string, k int) {
 			if err == io.EOF {
 				break
 			}
-			fmt.Printf("Error reading binary data: %v\n", err)
-			return
+			return nil, fmt.Errorf("error reading binary data: %v", err)
 		}
 
 		sequence := kmerToSequence(kmer, k)
-		fmt.Println(sequence)
+		sequences = append(sequences, sequence)
 	}
+
+	return sequences, nil
 }
 
 // main orchestrates the execution of a k-mer counting pipeline for DNA sequences.
