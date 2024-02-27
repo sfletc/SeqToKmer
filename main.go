@@ -374,7 +374,8 @@ func countAllKmers(numMaps int, filterMask uint64, kmerSequenceChans []chan []ui
 // - allCounts: A slice of maps where each map contains k-mer counts.
 // - finalFilePath: The path to the file where the k-mer counts should be written.
 // - minKmerCount: The minimum count threshold for a k-mer to be included in the output file.
-func writeCountsToFile(allCounts []map[uint64]int32, finalFilePath string, minKmerCount int) {
+func writeCountsToFile(allCounts []map[uint64]int32, finalFilePath string, minKmerCount int, k int) {
+
 	finalFile, err := os.Create(finalFilePath)
 	if err != nil {
 		log.Fatal(err)
@@ -384,6 +385,8 @@ func writeCountsToFile(allCounts []map[uint64]int32, finalFilePath string, minKm
 
 	var buffer bytes.Buffer
 	chunkSize := 1024
+	var k64 uint64 = uint64(k)
+	binary.Write(&buffer, binary.LittleEndian, k64)
 	for _, counts := range allCounts {
 		for kmer, count := range counts {
 			if count >= int32(minKmerCount) {
@@ -455,7 +458,7 @@ func kmerSearch(k int, inputSequences chan string, doneInputSequences chan bool,
 		<-doneKmerCounting
 	}
 
-	writeCountsToFile(allCountMaps, finalFilePath, minKmerCount)
+	writeCountsToFile(allCountMaps, finalFilePath, minKmerCount, k)
 }
 
 // kmerToSequence converts a numeric representation of a k-mer back into its
@@ -492,7 +495,7 @@ func kmerToSequence(kmer uint64, k int) string {
 // Returns:
 // - A slice of strings representing the sequences of nucleotides for the k-mers.
 // - An error if any occurs during file operation or reading.
-func readKmersFromDisk(filename string, k int) ([]string, error) {
+func readKmersFromDisk(filename string) ([]string, error) {
 	file, err := os.Open(filename)
 	if err != nil {
 		return nil, fmt.Errorf("error opening file: %v", err)
@@ -500,6 +503,14 @@ func readKmersFromDisk(filename string, k int) ([]string, error) {
 	defer file.Close()
 
 	var sequences []string
+	// set k to the first line of the file
+	var k64 uint64
+	err = binary.Read(file, binary.LittleEndian, &k64)
+	if err != nil {
+		return nil, fmt.Errorf("error reading binary data: %v", err)
+	}
+	var k int = int(k64)
+	fmt.Printf("kmer length: %v\n", k64)
 	for {
 		var kmer uint64
 		err := binary.Read(file, binary.LittleEndian, &kmer)
@@ -511,6 +522,7 @@ func readKmersFromDisk(filename string, k int) ([]string, error) {
 		}
 
 		sequence := kmerToSequence(kmer, k)
+		fmt.Printf("kmer: %v, sequence: %v\n", kmer, sequence)
 		sequences = append(sequences, sequence)
 	}
 
@@ -578,6 +590,6 @@ func main() {
 	// Optionally load and print if the flag is set
 	if *loadAndPrint {
 		fmt.Printf("Loading output file: %v\n", *outputFilePath)
-		readKmersFromDisk(*outputFilePath, *kmerLength)
+		readKmersFromDisk(*outputFilePath)
 	}
 }
