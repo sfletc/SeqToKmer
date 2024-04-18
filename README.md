@@ -1,4 +1,4 @@
-## SeqToKmer: a fast nuceltoid seuence to kmer tool.  
+## SeqToKmer: a fast nucleotide sequence to kmer tool.        
 
 Developed to process FASTA or fastq.gz files containing off-target sequences for use by [dsRNAmax](https://github.com/sfletc/dsRNAmax)
 
