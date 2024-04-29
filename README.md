@@ -29,4 +29,4 @@ Usage of seqToKmer:
 
 ## Coming
 
-- optionally write interum maps to disk to save RAM at the cost of speed
+- optionally write interim maps to disk to save RAM at the cost of speed
